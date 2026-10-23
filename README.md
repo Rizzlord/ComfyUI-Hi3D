@@ -27,14 +27,16 @@ Powered by Hi3D 1.0.
 | --- | --- | --- |
 | `resolution` | 1024 | 512 runs 1 pass, 1024 runs 2 passes, 1536 runs 3 passes |
 | `steps` | 25 | Scheduler updates per pass |
-| `seed` | 0 | Sampler seed (CPU generator) |
+| `seed` | 42 (fixed) | Sampler seed (CPU generator) |
 | `scheduler` | heun | `heun` is the released 2nd-order sampler. `euler` makes about half the transformer calls |
 | `guidance_strength` | 1.0 | Multiplier on the built-in image-guidance schedule. 0 turns guidance off |
 | `guidance_cutoff` | 0.7 | Guidance only runs at model times above this value |
 | `voxel_budget_scale` | 1.0 | Scales the sparse token budget per pass (80k/90k/110k). Lower uses less VRAM, higher keeps more detail |
 | `tiled_decode` | on | Low-VRAM VAE decode (see below). Turn it off for the stock decode |
-| `target_face_count` | 0 | Final face target. 0 means the default: 1M for 512/1024, 2M for 1536 |
-| `component_face_ratio` | 0.005 | Small disconnected parts below this share of faces are dropped |
+| `reduce_faces` | on | Simplifies the final mesh with pyfqmr. Off keeps the full extracted geometry (about 10M faces at 1536) |
+| `target_face_count` | 0 | Simplification target. 0 means the default: 1M for 512/1024, 2M for 1536 |
+| `remove_floaters` | on | Removes small disconnected parts before and after simplification. The largest part is always kept |
+| `floater_face_ratio` | 0.005 | Parts below this share of all faces count as floaters. 1.0 keeps only the largest part |
 | `fill_holes_max_edges` | 10000 | Largest boundary loop that gets closed. 0 turns hole filling off |
 | `restore_input_scale` | on | Puts the result on the input mesh's bounding box. Hi3D itself outputs at unit radius |
 | `remove_background` | off | Runs rembg when there is no alpha and no mask |
@@ -42,7 +44,8 @@ Powered by Hi3D 1.0.
 | `mask` / `invert_mask` | – | Foreground mask. Turn `invert_mask` on for the core LoadImage mask |
 | `sigma_min`, `time_rescale_factor` | 0.002, 2.0 | Advanced flow-schedule parameters |
 
-With the defaults, the output matches the upstream `Sparc3DPipeline`. Hi3D frames the object using
+The defaults follow the upstream `Sparc3DPipeline`, with two additions: floaters are also removed after
+simplification, and the VAE decode is tiled. Both can be switched off. Hi3D frames the object using
 the image's alpha, so a cut-out PNG or a mask works best. Without alpha it uses the whole frame.
 
 ### VRAM modes (loader)

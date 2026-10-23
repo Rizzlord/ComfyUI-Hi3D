@@ -193,14 +193,16 @@ class Hi3DRefine:
                 "trimesh": ("TRIMESH", {"tooltip": "Coarse mesh to refine (Hunyuan3D, Trellis, TripoSG, a loaded mesh, ...)"}),
                 "resolution": ([512, 1024, 1536], {"default": 1024, "tooltip": "Sparse extraction grid. 512 = 1 pass, 1024 = 2 passes, 1536 = 3 passes"}),
                 "steps": ("INT", {"default": 25, "min": 1, "max": 200, "tooltip": "Scheduler updates per pass"}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "seed": ("INT", {"default": 42, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": "fixed"}),
                 "scheduler": (list(SCHEDULERS), {"default": "heun", "tooltip": "heun: released 2nd-order sampler. euler: 1st order, about half the transformer calls"}),
                 "guidance_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.05, "tooltip": "Multiplier on the built-in image guidance schedule. 1.0 = as released, 0 = no guidance"}),
                 "guidance_cutoff": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 1.0, "step": 0.01, "tooltip": "Guidance runs only at model times above this value (released: 0.7). Lower = guided in more steps, slower"}),
                 "voxel_budget_scale": ("FLOAT", {"default": 1.0, "min": 0.25, "max": 1.5, "step": 0.05, "tooltip": "Scales the sparse token budget of each pass (80k/90k/110k). Lower saves VRAM and time, higher keeps more detail"}),
                 "tiled_decode": ("BOOLEAN", {"default": True, "tooltip": "Decode the VAE in chunks of points with global GroupNorm statistics. Much lower VRAM and faster; matches the normal decode within its run-to-run noise"}),
-                "target_face_count": ("INT", {"default": 0, "min": 0, "max": 10000000, "step": 1000, "tooltip": "Final simplification target. 0 = default (1M for 512/1024, 2M for 1536)"}),
-                "component_face_ratio": ("FLOAT", {"default": 0.005, "min": 0.0, "max": 0.5, "step": 0.001, "tooltip": "Disconnected parts smaller than this share of faces are removed as debris (the largest part is always kept)"}),
+                "reduce_faces": ("BOOLEAN", {"default": True, "tooltip": "Simplify the final mesh to target_face_count. Off keeps the full extracted geometry (several million faces at 1024/1536)"}),
+                "target_face_count": ("INT", {"default": 0, "min": 0, "max": 10000000, "step": 1000, "tooltip": "Simplification target when reduce_faces is on. 0 = default (1M for 512/1024, 2M for 1536)"}),
+                "remove_floaters": ("BOOLEAN", {"default": True, "tooltip": "Remove small disconnected parts, before and after simplification. The largest part is always kept"}),
+                "floater_face_ratio": ("FLOAT", {"default": 0.005, "min": 0.0, "max": 1.0, "step": 0.001, "tooltip": "Parts with less than this share of all faces count as floaters. 1.0 keeps only the largest part"}),
                 "fill_holes_max_edges": ("INT", {"default": 10000, "min": 0, "max": 100000, "tooltip": "Close boundary loops up to this many edges after each extraction. 0 disables hole filling"}),
                 "restore_input_scale": ("BOOLEAN", {"default": True, "tooltip": "Place the result on the input mesh's bounding box. Off = Hi3D's unit-radius output"}),
                 "remove_background": ("BOOLEAN", {"default": False, "tooltip": "Run rembg when the image has no alpha and no mask is connected"}),
@@ -220,8 +222,8 @@ class Hi3DRefine:
     CATEGORY = "Hi3D"
 
     def refine(self, hi3d_model, image, trimesh, resolution, steps, seed, scheduler, guidance_strength,
-               guidance_cutoff, voxel_budget_scale, tiled_decode, target_face_count, component_face_ratio,
-               fill_holes_max_edges, restore_input_scale, remove_background, force_offload,
+               guidance_cutoff, voxel_budget_scale, tiled_decode, reduce_faces, target_face_count,
+               remove_floaters, floater_face_ratio, fill_holes_max_edges, restore_input_scale, remove_background, force_offload,
                mask=None, invert_mask=False, sigma_min=0.002, time_rescale_factor=2.0):
         pipeline = hi3d_model
         coarse = _as_trimesh(trimesh)
@@ -238,8 +240,10 @@ class Hi3DRefine:
             guidance_cutoff=guidance_cutoff,
             voxel_budget_scale=voxel_budget_scale,
             tiled_decode=tiled_decode,
+            reduce_faces=reduce_faces,
             target_face_count=target_face_count,
-            component_face_ratio=component_face_ratio,
+            remove_floaters=remove_floaters,
+            floater_face_ratio=floater_face_ratio,
             fill_holes_max_edges=fill_holes_max_edges,
         ))
 

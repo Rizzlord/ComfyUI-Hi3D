@@ -42,8 +42,10 @@ class RefineOptions:
     guidance_strength: float = 1.0
     guidance_cutoff: float = 0.7
     voxel_budget_scale: float = 1.0
+    reduce_faces: bool = True
     target_face_count: int = 0
-    component_face_ratio: float = 0.005
+    remove_floaters: bool = True
+    floater_face_ratio: float = 0.005
     fill_holes_max_edges: int = 10000
     tiled_decode: bool = True
 
@@ -192,10 +194,31 @@ class ComfyHi3DPipeline(Sparc3DPipeline):
         )
 
     def _postprocess_mesh(self, mesh, *, target_face_count):
-        from sparc3d.sparcubes.postprocess import postprocess_mesh
+        # Upstream postprocess_mesh: validate, drop small parts, simplify, unit-normalize.
+        # Here simplification is optional and small parts are dropped again afterwards,
+        # because pyfqmr pinches thin regions off into new slivers.
+        import numpy as np
+        import trimesh
 
-        return postprocess_mesh(
-            mesh,
-            target_face_count=self.options.target_face_count or target_face_count,
-            component_face_ratio=self.options.component_face_ratio,
+        from sparc3d.sparcubes import postprocess
+
+        options = self.options
+        result = postprocess.validate_mesh(mesh)
+        if options.remove_floaters:
+            result = postprocess._filter_components(result, options.floater_face_ratio)
+        if options.reduce_faces:
+            result = postprocess._simplify(result, int(options.target_face_count or target_face_count))
+            result = postprocess.validate_mesh(result)
+            if options.remove_floaters:
+                result = postprocess._filter_components(result, options.floater_face_ratio)
+
+        vertices = np.asarray(result.vertices, dtype=np.float64)
+        vertices = vertices - vertices.mean(axis=0, keepdims=True)
+        max_radius = float(np.linalg.norm(vertices, axis=1).max())
+        if not np.isfinite(max_radius) or max_radius <= 0.0:
+            raise ValueError("mesh cannot be normalized to a positive finite radius")
+        return trimesh.Trimesh(
+            vertices=vertices / max_radius,
+            faces=np.asarray(result.faces, dtype=np.int64).copy(),
+            process=False,
         )
