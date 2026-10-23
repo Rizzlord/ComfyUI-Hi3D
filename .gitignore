@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Weights live in ComfyUI/models/hi3d, never in the node pack
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# Generated meshes and scratch output
+*.glb
+*.gltf
+*.obj
+*.ply
+*.stl
+output*/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

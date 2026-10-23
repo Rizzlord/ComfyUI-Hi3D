@@ -1,0 +1,10 @@
+# The Hi3D code (sparc3d) is bundled in Hi3D-1.0/. These are its runtime packages;
+# install any that are missing with --no-deps to keep your torch stack untouched.
+trimesh
+pyfqmr
+safetensors
+accelerate
+huggingface_hub
+transformers
+rembg
+# GPU kernels, matching your torch/CUDA build: spconv-cu12x, flash-attn, triton
