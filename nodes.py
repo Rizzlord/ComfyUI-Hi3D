@@ -65,9 +65,11 @@ def _list_subfolders(marker, defaults, exclude_marker=None):
 
 
 def _resolve_folder(name, marker, auto_download):
+    # A known folder only counts once every file is there, so an interrupted download resumes.
+    required = DOWNLOADS[name][1] if name in DOWNLOADS else [marker]
     for root in _hi3d_roots():
         path = os.path.join(root, name)
-        if os.path.isfile(os.path.join(path, marker)):
+        if all(os.path.isfile(os.path.join(path, f)) for f in required):
             return os.path.abspath(path)
     target = os.path.join(hi3d_models_dir, name)
     if name not in DOWNLOADS:
